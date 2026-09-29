@@ -80,7 +80,7 @@ details{margin-top:5px}
 
 <div class="wrap">
   <div class="note">
-    <b>Daily update model:</b> upload your latest MIS CSV each day. Existing cases are matched by Case ID/LOS and updated; new cases are added. Changes are kept in this browser as history.
+    <b>Daily update model:</b> upload your latest MIS CSV each day. Existing cases are matched by Case ID/LOS when available; if LOS is blank, the business name is used to create a stable Case ID. New cases are added and changes are kept in this browser as history.
   </div>
 
   <div class="cards" id="cards"></div>
@@ -157,7 +157,7 @@ function today(){
 }
 function loadState(){
   try{
-    const saved=localStorage.getItem("monedo_dashboard_state");
+    const saved=localStorage.getItem("monedo_dashboard_state_v3");
     if(saved) return JSON.parse(saved);
   }catch(e){}
   return {
@@ -167,7 +167,7 @@ function loadState(){
 }
 let state=loadState();
 
-function save(){localStorage.setItem("monedo_dashboard_state",JSON.stringify(state));}
+function save(){localStorage.setItem("monedo_dashboard_state_v3",JSON.stringify(state));}
 function norm(x){return String(x??"").trim().toLowerCase();}
 function mergeCase(oldC,newC){
   const changes=[];
@@ -204,11 +204,6 @@ function updateFromRows(rows){
   alert(`Daily MIS updated\\n\\nNew cases: ${added}\\nCases changed: ${changed}\\nTotal cases: ${state.cases.length}`);
 }
 function parseCSV(text){
-  // Robust CSV parser for the Monedo MIS format:
-  // - supports UTF-8 BOM
-  // - detects comma/semicolon/tab delimiters
-  // - finds the real header row even when title rows exist above it
-  // - accepts the actual MIS names: Los, Name, Remarks 2, Contact Number, Status2
   text=String(text||"").replace(/^\uFEFF/,"");
   const rows=[]; let row=[], cell="", quoted=false;
   for(let i=0;i<text.length;i++){
@@ -216,84 +211,94 @@ function parseCSV(text){
     if(ch==='"'){
       if(quoted && nx==='"'){cell+='"';i++;}
       else quoted=!quoted;
-    }else if((ch===',' || ch===';' || ch==='\\t') && !quoted){
+    }else if(ch===',' && !quoted){
       row.push(cell); cell="";
-    }else if((ch==='\\n'||ch==='\\r') && !quoted){
-      if(ch==='\\r'&&nx==='\\n')i++;
+    }else if((ch==='\n'||ch==='\r') && !quoted){
+      if(ch==='\r' && nx==='\n') i++;
       row.push(cell); cell="";
       if(row.some(x=>String(x).trim()!=="")) rows.push(row);
       row=[];
-    }else cell+=ch;
+    }else{
+      cell+=ch;
+    }
   }
-  if(cell!=="" || row.length){row.push(cell); if(row.some(x=>String(x).trim()!=="")) rows.push(row);}
+  if(cell!=="" || row.length){
+    row.push(cell);
+    if(row.some(x=>String(x).trim()!=="")) rows.push(row);
+  }
   if(!rows.length) return [];
 
-  const cleanHeader=x=>String(x||"").replace(/^\uFEFF/,"").trim().toLowerCase().replace(/[^a-z0-9]+/g,"");
+  const cleanHeader=x=>String(x??"")
+    .replace(/^\uFEFF/,"")
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g,"");
+
   const aliases={
-    los:["los","loanid","caseid","applicationno","applicationnumber"],
-    business:["customer","name","business","businessname","customername"],
+    caseId:["caseid","los","loanid","applicationno","applicationnumber"],
+    business:["name","customer","business","businessname","customername","customername"],
     scf:["scf","scfamount","amount"],
     ageing:["ageing","aging","caseageing"],
-    csvStatus:["status"],
+    csvStatus:["status","csvstatus"],
     status2:["status2","statusii"],
     poc:["poc","personresponsible","responsible"],
-    pending:["pendingremark","remarks2","remark","remarks","pending","pendingaction","currentpendingaction"],
+    pending:["remarks2","pendingremark","pending","pendingaction","currentpendingaction","remarks"],
     month:["month"],
-    remark:["additionalremark","remarks08032026","remarks"],
-    contact:["contact","contactnumber","mobilenumber","phone","phonenumber"]
+    remark:["additionalremark","remark"],
+    contact:["contactnumber","contact","mobilenumber","phone","phonenumber"]
   };
 
-  function findHeaderIndex(headers, names){
-    const normalized=headers.map(cleanHeader);
-    for(const name of names){
-      const target=cleanHeader(name);
-      const exact=normalized.indexOf(target);
-      if(exact>=0) return exact;
-    }
-    // Fallback: partial match
-    for(let i=0;i<normalized.length;i++){
-      if(names.some(name=>{
-        const target=cleanHeader(name);
-        return target && (normalized[i].includes(target)||target.includes(normalized[i]));
-      })) return i;
+  function find(headers,names){
+    const h=headers.map(cleanHeader);
+    for(const n of names){
+      const t=cleanHeader(n);
+      const i=h.indexOf(t);
+      if(i>=0) return i;
     }
     return -1;
   }
 
-  // Find the row that contains the strongest combination of actual MIS headers.
-  let headerRow=-1, bestScore=-1;
-  rows.forEach((r,idx)=>{
-    const h=r.map(cleanHeader);
-    let score=0;
-    ["los","name","scf","ageing","status","poc","remarks2","month","contactnumber","status2"].forEach(k=>{
-      const target=cleanHeader(k);
-      if(h.includes(target)) score++;
+  // Find the row containing a recognizable customer/name/business header.
+  let headerRow=-1;
+  for(let i=0;i<Math.min(rows.length,30);i++){
+    const h=rows[i].map(cleanHeader);
+    if(h.some(x=>["name","customer","business","businessname","customername"].includes(x))){
+      headerRow=i; break;
+    }
+  }
+  // Fallback: any row with at least two recognized fields.
+  if(headerRow<0){
+    let best=-1,scoreBest=0;
+    rows.forEach((r,i)=>{
+      const h=r.map(cleanHeader);
+      const score=h.filter(x=>Object.values(aliases).some(list=>list.includes(x))).length;
+      if(score>scoreBest){scoreBest=score;best=i;}
     });
-    if(score>bestScore){bestScore=score;headerRow=idx;}
-  });
-  if(headerRow<0 || bestScore<2) return [];
+    if(best>=0 && scoreBest>=2) headerRow=best;
+  }
+  if(headerRow<0) return [];
 
   const headers=rows[headerRow];
   const ix={};
-  Object.keys(aliases).forEach(k=>ix[k]=findHeaderIndex(headers,aliases[k]));
+  for(const k of Object.keys(aliases)) ix[k]=find(headers,aliases[k]);
 
-  function get(r,k){
-    const i=ix[k];
-    return i>=0 ? String(r[i]??"").trim() : "";
-  }
+  const get=(r,k)=>ix[k]>=0 ? String(r[ix[k]]??"").trim() : "";
+
   function fallbackId(business,index){
-    const key=String(business||"").toLowerCase().replace(/[^a-z0-9]+/g,"-").replace(/^-|-$/g,"").slice(0,45);
+    const key=String(business||"").toLowerCase()
+      .replace(/[^a-z0-9]+/g,"-").replace(/^-|-$/g,"").slice(0,45);
     return key ? "MON-"+key : "MON-"+String(index+1).padStart(4,"0");
   }
 
   const result=[];
   rows.slice(headerRow+1).forEach((r,index)=>{
+    // Skip rows that are shorter than the header and contain no meaningful values.
     const business=get(r,"business");
-    const los=get(r,"los");
-    const caseId=los || fallbackId(business,index);
-    if(!business && !los) return;
-    const obj={
-      caseId,
+    const sourceId=get(r,"caseId");
+    if(!business && !sourceId) return;
+
+    result.push({
+      caseId:sourceId || fallbackId(business,index),
       business:displayName(business),
       originalBusiness:business,
       scf:get(r,"scf"),
@@ -305,8 +310,7 @@ function parseCSV(text){
       month:get(r,"month"),
       remark:get(r,"remark"),
       contact:get(r,"contact")
-    };
-    result.push(obj);
+    });
   });
   return result;
 }
@@ -323,7 +327,7 @@ document.getElementById("csvUpload").addEventListener("change",e=>{
   reader.onload=()=>{
     const parsed=parseCSV(reader.result);
     if(!parsed.length){
-      alert("I could not find customer rows in this CSV. Please check that it is the Monedo MIS CSV with a Name/Customer column.");
+      alert("No customer rows were found. The CSV must contain a Name, Customer, or Business Name column.");
       return;
     }
     updateFromRows(parsed);
@@ -407,7 +411,7 @@ function exportSnapshot(){
 }
 function resetDemo(){
   if(!confirm("Reset the dashboard to the original loaded MIS data? This will remove browser-saved daily changes."))return;
-  localStorage.removeItem("monedo_dashboard_state");state=loadState();render();
+  localStorage.removeItem("monedo_dashboard_state_v3");state=loadState();render();
 }
 render();
 </script>
