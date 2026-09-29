@@ -204,42 +204,111 @@ function updateFromRows(rows){
   alert(`Daily MIS updated\\n\\nNew cases: ${added}\\nCases changed: ${changed}\\nTotal cases: ${state.cases.length}`);
 }
 function parseCSV(text){
+  // Robust CSV parser for the Monedo MIS format:
+  // - supports UTF-8 BOM
+  // - detects comma/semicolon/tab delimiters
+  // - finds the real header row even when title rows exist above it
+  // - accepts the actual MIS names: Los, Name, Remarks 2, Contact Number, Status2
+  text=String(text||"").replace(/^\uFEFF/,"");
   const rows=[]; let row=[], cell="", quoted=false;
   for(let i=0;i<text.length;i++){
     const ch=text[i], nx=text[i+1];
-    if(ch==='"'){ if(quoted && nx==='"'){cell+='"';i++;} else quoted=!quoted; }
-    else if(ch===',' && !quoted){row.push(cell);cell="";}
-    else if((ch==='\\n'||ch==='\\r') && !quoted){
+    if(ch==='"'){
+      if(quoted && nx==='"'){cell+='"';i++;}
+      else quoted=!quoted;
+    }else if((ch===',' || ch===';' || ch==='\\t') && !quoted){
+      row.push(cell); cell="";
+    }else if((ch==='\\n'||ch==='\\r') && !quoted){
       if(ch==='\\r'&&nx==='\\n')i++;
-      row.push(cell);cell="";
+      row.push(cell); cell="";
       if(row.some(x=>String(x).trim()!=="")) rows.push(row);
       row=[];
-    } else cell+=ch;
+    }else cell+=ch;
   }
-  row.push(cell); if(row.some(x=>String(x).trim()!=="")) rows.push(row);
+  if(cell!=="" || row.length){row.push(cell); if(row.some(x=>String(x).trim()!=="")) rows.push(row);}
   if(!rows.length) return [];
-  let h=rows.findIndex(r=>r.some(x=>/LOS|Customer|SCF|Ageing/i.test(x)));
-  if(h<0) h=0;
-  const headers=rows[h].map(x=>String(x).trim());
-  const ix=(name)=>headers.findIndex(x=>norm(x)===norm(name));
-  return rows.slice(h+1).map(r=>{
-    const get=name=>{const i=ix(name);return i>=0?String(r[i]||"").trim():"";};
-    const los=get("LOS");
-    return {
-      caseId:los || "",
-      business:displayName(get("Customer")),
-      originalBusiness:get("Customer"),
-      scf:get("SCF"),
-      ageing:get("Ageing"),
-      csvStatus:get("Status"),
-      status2:get("Status 2"),
-      poc:get("POC"),
-      pending:get("Pending / Remark"),
-      month:get("Month"),
-      remark:get("Additional Remark"),
-      contact:get("Contact")
+
+  const cleanHeader=x=>String(x||"").replace(/^\uFEFF/,"").trim().toLowerCase().replace(/[^a-z0-9]+/g,"");
+  const aliases={
+    los:["los","loanid","caseid","applicationno","applicationnumber"],
+    business:["customer","name","business","businessname","customername"],
+    scf:["scf","scfamount","amount"],
+    ageing:["ageing","aging","caseageing"],
+    csvStatus:["status"],
+    status2:["status2","statusii"],
+    poc:["poc","personresponsible","responsible"],
+    pending:["pendingremark","remarks2","remark","remarks","pending","pendingaction","currentpendingaction"],
+    month:["month"],
+    remark:["additionalremark","remarks08032026","remarks"],
+    contact:["contact","contactnumber","mobilenumber","phone","phonenumber"]
+  };
+
+  function findHeaderIndex(headers, names){
+    const normalized=headers.map(cleanHeader);
+    for(const name of names){
+      const target=cleanHeader(name);
+      const exact=normalized.indexOf(target);
+      if(exact>=0) return exact;
+    }
+    // Fallback: partial match
+    for(let i=0;i<normalized.length;i++){
+      if(names.some(name=>{
+        const target=cleanHeader(name);
+        return target && (normalized[i].includes(target)||target.includes(normalized[i]));
+      })) return i;
+    }
+    return -1;
+  }
+
+  // Find the row that contains the strongest combination of actual MIS headers.
+  let headerRow=-1, bestScore=-1;
+  rows.forEach((r,idx)=>{
+    const h=r.map(cleanHeader);
+    let score=0;
+    ["los","name","scf","ageing","status","poc","remarks2","month","contactnumber","status2"].forEach(k=>{
+      const target=cleanHeader(k);
+      if(h.includes(target)) score++;
+    });
+    if(score>bestScore){bestScore=score;headerRow=idx;}
+  });
+  if(headerRow<0 || bestScore<2) return [];
+
+  const headers=rows[headerRow];
+  const ix={};
+  Object.keys(aliases).forEach(k=>ix[k]=findHeaderIndex(headers,aliases[k]));
+
+  function get(r,k){
+    const i=ix[k];
+    return i>=0 ? String(r[i]??"").trim() : "";
+  }
+  function fallbackId(business,index){
+    const key=String(business||"").toLowerCase().replace(/[^a-z0-9]+/g,"-").replace(/^-|-$/g,"").slice(0,45);
+    return key ? "MON-"+key : "MON-"+String(index+1).padStart(4,"0");
+  }
+
+  const result=[];
+  rows.slice(headerRow+1).forEach((r,index)=>{
+    const business=get(r,"business");
+    const los=get(r,"los");
+    const caseId=los || fallbackId(business,index);
+    if(!business && !los) return;
+    const obj={
+      caseId,
+      business:displayName(business),
+      originalBusiness:business,
+      scf:get(r,"scf"),
+      ageing:get(r,"ageing"),
+      csvStatus:get(r,"csvStatus"),
+      status2:get(r,"status2"),
+      poc:get(r,"poc"),
+      pending:get(r,"pending"),
+      month:get(r,"month"),
+      remark:get(r,"remark"),
+      contact:get(r,"contact")
     };
-  }).filter(r=>r.caseId || r.business);
+    result.push(obj);
+  });
+  return result;
 }
 function displayName(s){
   s=String(s||"").trim().replace(/\\s+/g," ");
@@ -251,7 +320,14 @@ function displayName(s){
 document.getElementById("csvUpload").addEventListener("change",e=>{
   const file=e.target.files[0]; if(!file)return;
   const reader=new FileReader();
-  reader.onload=()=>updateFromRows(parseCSV(reader.result));
+  reader.onload=()=>{
+    const parsed=parseCSV(reader.result);
+    if(!parsed.length){
+      alert("I could not find customer rows in this CSV. Please check that it is the Monedo MIS CSV with a Name/Customer column.");
+      return;
+    }
+    updateFromRows(parsed);
+  };
   reader.readAsText(file);
   e.target.value="";
 });
