@@ -1,0 +1,339 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Monedo Operations Dashboard</title>
+<style>
+:root{
+  --navy:#0b1730; --navy2:#13264a; --bg:#f4f7fb; --card:#fff; --line:#e3e8f0;
+  --text:#182235; --muted:#6b7688; --green:#15803d; --greenbg:#dcfce7;
+  --amber:#b45309; --amberbg:#fef3c7; --red:#b91c1c; --redbg:#fee2e2;
+  --blue:#1d4ed8; --bluebg:#dbeafe; --purple:#6d28d9; --purplebg:#ede9fe;
+}
+*{box-sizing:border-box}
+body{margin:0;font-family:Inter,Segoe UI,Arial,sans-serif;background:var(--bg);color:var(--text)}
+header{background:linear-gradient(135deg,var(--navy),var(--navy2));color:#fff;padding:24px 28px}
+.header-row{max-width:1450px;margin:auto;display:flex;justify-content:space-between;gap:20px;align-items:center}
+h1{margin:0;font-size:26px}.sub{opacity:.75;margin-top:5px;font-size:13px}
+.actions{display:flex;gap:9px;flex-wrap:wrap}
+button,.file-label{border:0;border-radius:9px;padding:10px 14px;font-weight:600;cursor:pointer;background:#fff;color:var(--navy)}
+button.secondary{background:#e8eef8}.file-label{display:inline-flex;align-items:center}
+input[type=file]{display:none}
+.wrap{max-width:1450px;margin:22px auto;padding:0 22px}
+.cards{display:grid;grid-template-columns:repeat(6,1fr);gap:12px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:17px;box-shadow:0 2px 8px rgba(15,23,42,.04)}
+.card .n{font-size:25px;font-weight:800}.card .l{color:var(--muted);font-size:12px;margin-top:5px}
+.panel{background:#fff;border:1px solid var(--line);border-radius:14px;margin-top:18px;box-shadow:0 2px 8px rgba(15,23,42,.04)}
+.panel-head{padding:16px 18px;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap}
+.panel-title{font-weight:800}.hint{font-size:12px;color:var(--muted)}
+.pipeline{display:grid;grid-template-columns:repeat(5,1fr);gap:10px;padding:15px 18px}
+.stage{border:1px solid var(--line);border-radius:11px;padding:13px;cursor:pointer;background:#fbfcfe}
+.stage:hover{border-color:#b8c7df}.stage .num{font-size:20px;font-weight:800}.stage .txt{font-size:12px;color:var(--muted);margin-top:4px}
+.controls{display:flex;gap:9px;flex-wrap:wrap;padding:15px 18px}
+.controls input,.controls select{border:1px solid #d6deea;border-radius:9px;padding:10px 12px;background:#fff;min-width:170px;outline:none}
+.controls input{flex:1;min-width:260px}
+.table-wrap{overflow:auto}
+table{width:100%;border-collapse:collapse;min-width:1050px}
+th,td{padding:12px 14px;border-bottom:1px solid #edf0f5;text-align:left;font-size:13px;vertical-align:top}
+th{font-size:11px;text-transform:uppercase;letter-spacing:.04em;color:#6b7688;background:#fafbfe;position:sticky;top:0}
+tr:hover td{background:#fbfdff}
+.business{font-weight:750}.caseid{font-size:11px;color:#7a8494;margin-top:3px}
+.badge{display:inline-block;padding:5px 8px;border-radius:999px;font-size:11px;font-weight:700;white-space:nowrap}
+.active{background:var(--greenbg);color:var(--green)} .hold{background:var(--amberbg);color:var(--amber)}
+.rejected{background:var(--redbg);color:var(--red)}
+.stage-blue{background:var(--bluebg);color:var(--blue)}
+.stage-purple{background:var(--purplebg);color:var(--purple)}
+.pending{font-weight:650}
+.age-old{color:var(--red);font-weight:800}.age-mid{color:var(--amber);font-weight:750}
+.empty{padding:35px;text-align:center;color:var(--muted)}
+details summary{cursor:pointer;color:#365a96;font-weight:650}
+details{margin-top:5px}
+.small{font-size:11px;color:var(--muted)}
+.modal{position:fixed;inset:0;background:rgba(2,8,23,.55);display:none;align-items:center;justify-content:center;padding:20px;z-index:20}
+.modal.show{display:flex}.modalbox{background:#fff;border-radius:16px;max-width:800px;width:100%;max-height:85vh;overflow:auto}
+.modalhead{padding:18px;border-bottom:1px solid var(--line);display:flex;justify-content:space-between}
+.modalbody{padding:18px}.grid{display:grid;grid-template-columns:repeat(2,1fr);gap:12px}
+.kv{background:#f8fafc;border:1px solid var(--line);border-radius:10px;padding:11px}.kv b{display:block;font-size:11px;color:var(--muted);margin-bottom:4px}
+.history{margin-top:18px;border-top:1px solid var(--line);padding-top:15px}
+.history-row{padding:9px 0;border-bottom:1px solid #edf0f5;font-size:12px}
+.note{background:#eff6ff;border:1px solid #bfdbfe;padding:11px 13px;border-radius:10px;color:#1e3a8a;font-size:12px}
+@media(max-width:1050px){.cards{grid-template-columns:repeat(3,1fr)}.pipeline{grid-template-columns:repeat(3,1fr)}}
+@media(max-width:650px){.cards{grid-template-columns:repeat(2,1fr)}.pipeline{grid-template-columns:1fr 1fr}.wrap{padding:0 10px}header{padding:18px}.header-row{display:block}.actions{margin-top:15px}.grid{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<header>
+  <div class="header-row">
+    <div>
+      <h1>Monedo Operations Dashboard</h1>
+      <div class="sub">Daily case tracking • Current status • Pending actions • Change history</div>
+    </div>
+    <div class="actions">
+      <label class="file-label" for="csvUpload">＋ Add / Update Daily CSV</label>
+      <input id="csvUpload" type="file" accept=".csv">
+      <button class="secondary" onclick="exportSnapshot()">Export Current CSV</button>
+      <button class="secondary" onclick="resetDemo()">Reset Demo Data</button>
+    </div>
+  </div>
+</header>
+
+<div class="wrap">
+  <div class="note">
+    <b>Daily update model:</b> upload your latest MIS CSV each day. Existing cases are matched by Case ID/LOS and updated; new cases are added. Changes are kept in this browser as history.
+  </div>
+
+  <div class="cards" id="cards"></div>
+
+  <div class="panel">
+    <div class="panel-head">
+      <div>
+        <div class="panel-title">Case Pipeline</div>
+        <div class="hint">Click a stage to filter the cases below</div>
+      </div>
+      <div class="hint" id="lastUpdated"></div>
+    </div>
+    <div class="pipeline" id="pipeline"></div>
+  </div>
+
+  <div class="panel">
+    <div class="panel-head">
+      <div>
+        <div class="panel-title">Current Cases</div>
+        <div class="hint">Focus: what is pending and what needs action now</div>
+      </div>
+    </div>
+    <div class="controls">
+      <input id="search" placeholder="Search business, Case ID, POC, contact or pending...">
+      <select id="stageFilter"><option value="">All stages</option></select>
+      <select id="statusFilter"><option value="">All statuses</option><option>Active</option><option>On Hold</option><option>Rejected</option></select>
+      <select id="ageFilter"><option value="">All ageing</option><option value="15">15+ days</option><option value="30">30+ days</option></select>
+      <button class="secondary" onclick="clearFilters()">Clear</button>
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead><tr>
+          <th>Business / Case ID</th><th>Stage</th><th>Current Status</th><th>Current Pending / Action</th>
+          <th>Person Responsible</th><th>SCF Amount</th><th>Case Ageing</th><th>Last Updated</th>
+        </tr></thead>
+        <tbody id="tbody"></tbody>
+      </table>
+      <div id="empty" class="empty" style="display:none">No cases match the selected filters.</div>
+    </div>
+  </div>
+</div>
+
+<div class="modal" id="modal">
+  <div class="modalbox">
+    <div class="modalhead"><b id="modalTitle">Case Details</b><button onclick="closeModal()">✕</button></div>
+    <div class="modalbody" id="modalBody"></div>
+  </div>
+</div>
+
+<script>
+const INITIAL_DATA = [{"caseId": "MON-0001", "business": "", "originalBusiness": "", "scf": "20000000", "ageing": "", "csvStatus": "Pending", "status2": "", "poc": "", "pending": "", "month": "", "remark": "", "contact": ""}, {"caseId": "MON-0002", "business": "", "originalBusiness": "", "scf": "10000000", "ageing": "", "csvStatus": "Pending", "status2": "", "poc": "", "pending": "", "month": "", "remark": "", "contact": ""}, {"caseId": "MON-0003", "business": "", "originalBusiness": "", "scf": "20000000", "ageing": "", "csvStatus": "Pending", "status2": "", "poc": "", "pending": "", "month": "", "remark": "", "contact": ""}, {"caseId": "MON-0004", "business": "", "originalBusiness": "", "scf": "10000000", "ageing": "", "csvStatus": "Closed", "status2": "", "poc": "", "pending": "", "month": "", "remark": "", "contact": ""}, {"caseId": "MON-0005", "business": "", "originalBusiness": "", "scf": "30000000", "ageing": "", "csvStatus": "Closed", "status2": "", "poc": "", "pending": "", "month": "", "remark": "", "contact": ""}, {"caseId": "MON-0006", "business": "", "originalBusiness": "", "scf": "10000000", "ageing": "", "csvStatus": "Closed", "status2": "", "poc": "", "pending": "", "month": "", "remark": "", "contact": ""}, {"caseId": "MON-0007", "business": "", "originalBusiness": "", "scf": "10000000", "ageing": "", "csvStatus": "Closed", "status2": "", "poc": "", "pending": "", "month": "", "remark": "", "contact": ""}, {"caseId": "MON-0008", "business": "", "originalBusiness": "", "scf": "10000000", "ageing": "", "csvStatus": "Closed", "status2": "", "poc": "", "pending": "", "month": "", "remark": "", "contact": ""}, {"caseId": "MON-0009", "business": "", "originalBusiness": "", "scf": "15000000", "ageing": "", "csvStatus": "Closed", "status2": "", "poc": "", "pending": "", "month": "", "remark": "", "contact": ""}, {"caseId": "MON-0010", "business": "", "originalBusiness": "", "scf": "20000000", "ageing": "", "csvStatus": "Closed", "status2": "", "poc": "", "pending": "", "month": "", "remark": "", "contact": ""}, {"caseId": "MON-0011", "business": "", "originalBusiness": "", "scf": "20000000", "ageing": "", "csvStatus": "Closed", "status2": "", "poc": "", "pending": "", "month": "", "remark": "", "contact": ""}, {"caseId": "MON-0012", "business": "", "originalBusiness": "", "scf": "5000000", "ageing": "", "csvStatus": "Pending", "status2": "", "poc": "", "pending": "", "month": "", "remark": "", "contact": ""}, {"caseId": "MON-0013", "business": "", "originalBusiness": "", "scf": "5000000", "ageing": "", "csvStatus": "Pending", "status2": "", "poc": "", "pending": "", "month": "", "remark": "", "contact": ""}, {"caseId": "MON-0014", "business": "", "originalBusiness": "", "scf": "10000000", "ageing": "", "csvStatus": "Logined", "status2": "", "poc": "", "pending": "", "month": "", "remark": "", "contact": ""}, {"caseId": "MON-0015", "business": "", "originalBusiness": "", "scf": "10000000", "ageing": "", "csvStatus": "Pending", "status2": "", "poc": "", "pending": "", "month": "", "remark": "", "contact": ""}, {"caseId": "MON-0016", "business": "", "originalBusiness": "", "scf": "10000000", "ageing": "", "csvStatus": "Pending", "status2": "", "poc": "", "pending": "", "month": "", "remark": "", "contact": ""}, {"caseId": "MON-0017", "business": "", "originalBusiness": "", "scf": "10000000", "ageing": "", "csvStatus": "Pending", "status2": "", "poc": "", "pending": "", "month": "", "remark": "", "contact": ""}, {"caseId": "MON-0018", "business": "", "originalBusiness": "", "scf": "10000000", "ageing": "", "csvStatus": "Pending", "status2": "", "poc": "", "pending": "", "month": "", "remark": "", "contact": ""}, {"caseId": "MON-0019", "business": "", "originalBusiness": "", "scf": "10000000", "ageing": "", "csvStatus": "Pending", "status2": "", "poc": "", "pending": "", "month": "", "remark": "", "contact": ""}, {"caseId": "MON-0020", "business": "", "originalBusiness": "", "scf": "", "ageing": "", "csvStatus": "Logined", "status2": "", "poc": "Vinay", "pending": "", "month": "", "remark": "", "contact": ""}, {"caseId": "MON-0021", "business": "", "originalBusiness": "", "scf": "", "ageing": "", "csvStatus": "Logined", "status2": "", "poc": "Vinay", "pending": "", "month": "", "remark": "", "contact": ""}, {"caseId": "MON-0022", "business": "", "originalBusiness": "", "scf": "", "ageing": "", "csvStatus": "Closed", "status2": "", "poc": "", "pending": "", "month": "", "remark": "", "contact": ""}, {"caseId": "MON-0023", "business": "", "originalBusiness": "", "scf": "", "ageing": "", "csvStatus": "Closed", "status2": "", "poc": "", "pending": "", "month": "", "remark": "", "contact": ""}, {"caseId": "MON-0024", "business": "", "originalBusiness": "", "scf": "", "ageing": "", "csvStatus": "Cannot be done", "status2": "", "poc": "", "pending": "", "month": "", "remark": "", "contact": ""}, {"caseId": "MON-0025", "business": "", "originalBusiness": "", "scf": "", "ageing": "", "csvStatus": "Cannot be done", "status2": "", "poc": "", "pending": "", "month": "", "remark": "", "contact": ""}, {"caseId": "MON-0026", "business": "", "originalBusiness": "", "scf": "", "ageing": "", "csvStatus": "Closed", "status2": "", "poc": "", "pending": "", "month": "", "remark": "", "contact": ""}, {"caseId": "MON-0027", "business": "", "originalBusiness": "", "scf": "", "ageing": "", "csvStatus": "Cannot be done", "status2": "", "poc": "", "pending": "", "month": "", "remark": "", "contact": ""}, {"caseId": "MON-0028", "business": "", "originalBusiness": "", "scf": "", "ageing": "", "csvStatus": "Cannot be done", "status2": "", "poc": "", "pending": "", "month": "", "remark": "", "contact": ""}, {"caseId": "MON-0029", "business": "", "originalBusiness": "", "scf": "", "ageing": "", "csvStatus": "Cannot be done", "status2": "", "poc": "", "pending": "", "month": "", "remark": "", "contact": ""}, {"caseId": "MON-0030", "business": "", "originalBusiness": "", "scf": "", "ageing": "", "csvStatus": "Logined", "status2": "", "poc": "Vinay", "pending": "", "month": "", "remark": "", "contact": ""}, {"caseId": "MON-0031", "business": "", "originalBusiness": "", "scf": "", "ageing": "", "csvStatus": "Cannot be done", "status2": "", "poc": "", "pending": "", "month": "", "remark": "", "contact": ""}, {"caseId": "MON-0032", "business": "", "originalBusiness": "", "scf": "", "ageing": "", "csvStatus": "Closed", "status2": "", "poc": "", "pending": "", "month": "", "remark": "", "contact": ""}, {"caseId": "MON-0033", "business": "", "originalBusiness": "", "scf": "", "ageing": "", "csvStatus": "Closed", "status2": "", "poc": "", "pending": "", "month": "", "remark": "", "contact": ""}, {"caseId": "MON-0034", "business": "", "originalBusiness": "", "scf": "", "ageing": "", "csvStatus": "Cannot be done", "status2": "", "poc": "", "pending": "", "month": "", "remark": "", "contact": ""}, {"caseId": "MON-0035", "business": "", "originalBusiness": "", "scf": "", "ageing": "", "csvStatus": "Cannot be done", "status2": "", "poc": "", "pending": "", "month": "", "remark": "", "contact": ""}, {"caseId": "MON-0036", "business": "", "originalBusiness": "", "scf": "", "ageing": "", "csvStatus": "Cannot be done", "status2": "", "poc": "", "pending": "", "month": "", "remark": "", "contact": ""}, {"caseId": "MON-0037", "business": "", "originalBusiness": "", "scf": "", "ageing": "", "csvStatus": "Closed", "status2": "", "poc": "", "pending": "", "month": "", "remark": "", "contact": ""}, {"caseId": "MON-0038", "business": "", "originalBusiness": "", "scf": "", "ageing": "", "csvStatus": "Closed", "status2": "", "poc": "", "pending": "", "month": "", "remark": "", "contact": ""}, {"caseId": "MON-0039", "business": "", "originalBusiness": "", "scf": "", "ageing": "", "csvStatus": "Closed", "status2": "", "poc": "", "pending": "", "month": "", "remark": "", "contact": ""}, {"caseId": "MON-0040", "business": "", "originalBusiness": "", "scf": "", "ageing": "", "csvStatus": "Cannot be done", "status2": "", "poc": "", "pending": "", "month": "", "remark": "", "contact": ""}, {"caseId": "MON-0041", "business": "", "originalBusiness": "", "scf": "", "ageing": "", "csvStatus": "Pending", "status2": "", "poc": "Vinay", "pending": "", "month": "", "remark": "", "contact": ""}, {"caseId": "MON-0042", "business": "", "originalBusiness": "", "scf": "", "ageing": "", "csvStatus": "Closed", "status2": "", "poc": "", "pending": "", "month": "", "remark": "", "contact": ""}, {"caseId": "MON-0043", "business": "", "originalBusiness": "", "scf": "", "ageing": "", "csvStatus": "Closed", "status2": "", "poc": "", "pending": "", "month": "", "remark": "", "contact": ""}, {"caseId": "MON-0044", "business": "", "originalBusiness": "", "scf": "", "ageing": "", "csvStatus": "Closed", "status2": "", "poc": "", "pending": "", "month": "", "remark": "", "contact": ""}, {"caseId": "MON-0045", "business": "", "originalBusiness": "", "scf": "", "ageing": "", "csvStatus": "Closed", "status2": "", "poc": "", "pending": "", "month": "", "remark": "", "contact": ""}, {"caseId": "MON-0046", "business": "", "originalBusiness": "", "scf": "", "ageing": "", "csvStatus": "Cannot be done", "status2": "", "poc": "", "pending": "", "month": "", "remark": "", "contact": ""}, {"caseId": "MON-0047", "business": "", "originalBusiness": "", "scf": "", "ageing": "", "csvStatus": "Closed", "status2": "", "poc": "", "pending": "", "month": "", "remark": "", "contact": ""}, {"caseId": "MON-0048", "business": "", "originalBusiness": "", "scf": "", "ageing": "", "csvStatus": "Closed", "status2": "", "poc": "", "pending": "", "month": "", "remark": "", "contact": ""}, {"caseId": "MON-0049", "business": "", "originalBusiness": "", "scf": "", "ageing": "", "csvStatus": "Closed", "status2": "", "poc": "", "pending": "", "month": "", "remark": "", "contact": ""}, {"caseId": "MON-0050", "business": "", "originalBusiness": "", "scf": "", "ageing": "", "csvStatus": "Pending", "status2": "", "poc": "Vinay", "pending": "", "month": "", "remark": "", "contact": ""}, {"caseId": "MON-0051", "business": "", "originalBusiness": "", "scf": "", "ageing": "", "csvStatus": "Closed", "status2": "", "poc": "", "pending": "", "month": "", "remark": "", "contact": ""}, {"caseId": "MON-0052", "business": "", "originalBusiness": "", "scf": "", "ageing": "", "csvStatus": "Closed", "status2": "", "poc": "", "pending": "", "month": "", "remark": "", "contact": ""}, {"caseId": "MON-0053", "business": "", "originalBusiness": "", "scf": "", "ageing": "", "csvStatus": "Closed", "status2": "", "poc": "", "pending": "", "month": "", "remark": "", "contact": ""}, {"caseId": "MON-0054", "business": "", "originalBusiness": "", "scf": "", "ageing": "", "csvStatus": "Cannot be done", "status2": "", "poc": "", "pending": "", "month": "", "remark": "", "contact": ""}, {"caseId": "MON-0055", "business": "", "originalBusiness": "", "scf": "", "ageing": "", "csvStatus": "Closed", "status2": "", "poc": "", "pending": "", "month": "", "remark": "", "contact": ""}, {"caseId": "MON-0056", "business": "", "originalBusiness": "", "scf": "", "ageing": "", "csvStatus": "Closed", "status2": "", "poc": "", "pending": "", "month": "", "remark": "", "contact": ""}, {"caseId": "MON-0057", "business": "", "originalBusiness": "", "scf": "", "ageing": "", "csvStatus": "Pending", "status2": "", "poc": "Vinay", "pending": "", "month": "", "remark": "", "contact": ""}, {"caseId": "MON-0058", "business": "", "originalBusiness": "", "scf": "", "ageing": "", "csvStatus": "Closed", "status2": "", "poc": "", "pending": "", "month": "", "remark": "", "contact": ""}, {"caseId": "MON-0059", "business": "", "originalBusiness": "", "scf": "2cr", "ageing": "", "csvStatus": "Pending", "status2": "", "poc": "Vinay", "pending": "", "month": "", "remark": "", "contact": ""}, {"caseId": "MON-0060", "business": "", "originalBusiness": "", "scf": "", "ageing": "", "csvStatus": "Pending", "status2": "", "poc": "Vinay", "pending": "", "month": "", "remark": "", "contact": ""}, {"caseId": "MON-0061", "business": "", "originalBusiness": "", "scf": "5", "ageing": "", "csvStatus": "Closed", "status2": "", "poc": "Vinay", "pending": "", "month": "May", "remark": "", "contact": ""}, {"caseId": "MON-0062", "business": "", "originalBusiness": "", "scf": "2", "ageing": "", "csvStatus": "Cannot be done", "status2": "", "poc": "", "pending": "", "month": "", "remark": "", "contact": ""}, {"caseId": "MON-0063", "business": "", "originalBusiness": "", "scf": "", "ageing": "", "csvStatus": "Closed", "status2": "", "poc": "", "pending": "", "month": "", "remark": "", "contact": ""}, {"caseId": "MON-0064", "business": "", "originalBusiness": "", "scf": "2", "ageing": "", "csvStatus": "Closed", "status2": "", "poc": "", "pending": "", "month": "", "remark": "", "contact": ""}, {"caseId": "MON-0065", "business": "", "originalBusiness": "", "scf": "85 L", "ageing": "", "csvStatus": "Cannot be done", "status2": "", "poc": "", "pending": "", "month": "", "remark": "", "contact": ""}, {"caseId": "MON-0066", "business": "", "originalBusiness": "", "scf": "", "ageing": "", "csvStatus": "Cannot be done", "status2": "", "poc": "", "pending": "", "month": "", "remark": "", "contact": ""}, {"caseId": "MON-0067", "business": "", "originalBusiness": "", "scf": "", "ageing": "", "csvStatus": "Closed", "status2": "", "poc": "", "pending": "", "month": "", "remark": "", "contact": ""}, {"caseId": "MON-0068", "business": "", "originalBusiness": "", "scf": "", "ageing": "", "csvStatus": "Cannot be done", "status2": "", "poc": "", "pending": "", "month": "", "remark": "", "contact": ""}, {"caseId": "MON-0069", "business": "", "originalBusiness": "", "scf": "1.5", "ageing": "50", "csvStatus": "Closed", "status2": "", "poc": "", "pending": "", "month": "", "remark": "", "contact": ""}, {"caseId": "MON-0070", "business": "", "originalBusiness": "", "scf": "1.5", "ageing": "50", "csvStatus": "Closed", "status2": "", "poc": "", "pending": "", "month": "", "remark": "", "contact": ""}, {"caseId": "MON-0071", "business": "", "originalBusiness": "", "scf": "", "ageing": "", "csvStatus": "Closed", "status2": "", "poc": "", "pending": "", "month": "", "remark": "", "contact": ""}, {"caseId": "MON-0072", "business": "", "originalBusiness": "", "scf": "1", "ageing": "", "csvStatus": "Closed", "status2": "", "poc": "", "pending": "", "month": "", "remark": "", "contact": ""}, {"caseId": "MON-0073", "business": "", "originalBusiness": "", "scf": "1", "ageing": "", "csvStatus": "Closed", "status2": "", "poc": "", "pending": "", "month": "", "remark": "", "contact": ""}, {"caseId": "MON-0074", "business": "", "originalBusiness": "", "scf": "", "ageing": "", "csvStatus": "Hold", "status2": "", "poc": "Vinay", "pending": "", "month": "May", "remark": "", "contact": ""}, {"caseId": "MON-0075", "business": "", "originalBusiness": "", "scf": "", "ageing": "", "csvStatus": "Pending", "status2": "", "poc": "Vinay", "pending": "", "month": "May", "remark": "", "contact": ""}, {"caseId": "MON-0076", "business": "", "originalBusiness": "", "scf": "", "ageing": "", "csvStatus": "Closed", "status2": "", "poc": "", "pending": "", "month": "May", "remark": "", "contact": ""}, {"caseId": "MON-0077", "business": "", "originalBusiness": "", "scf": "", "ageing": "", "csvStatus": "Cannot be done", "status2": "", "poc": "", "pending": "", "month": "", "remark": "", "contact": ""}, {"caseId": "MON-0078", "business": "", "originalBusiness": "", "scf": "", "ageing": "", "csvStatus": "Closed", "status2": "", "poc": "", "pending": "", "month": "May", "remark": "", "contact": ""}, {"caseId": "MON-0079", "business": "", "originalBusiness": "", "scf": "", "ageing": "", "csvStatus": "Closed", "status2": "", "poc": "", "pending": "", "month": "May", "remark": "", "contact": ""}, {"caseId": "MON-0080", "business": "", "originalBusiness": "", "scf": "2", "ageing": "", "csvStatus": "Closed", "status2": "", "poc": "", "pending": "", "month": "May", "remark": "", "contact": ""}, {"caseId": "MON-0081", "business": "", "originalBusiness": "", "scf": "2", "ageing": "", "csvStatus": "Cannot be done", "status2": "", "poc": "", "pending": "", "month": "May", "remark": "", "contact": ""}, {"caseId": "MON-0082", "business": "", "originalBusiness": "", "scf": "2", "ageing": "", "csvStatus": "Logined", "status2": "", "poc": "Vinay", "pending": "", "month": "May", "remark": "", "contact": ""}, {"caseId": "MON-0083", "business": "", "originalBusiness": "", "scf": "2", "ageing": "", "csvStatus": "Closed", "status2": "", "poc": "", "pending": "", "month": "May", "remark": "", "contact": ""}, {"caseId": "MON-0084", "business": "", "originalBusiness": "", "scf": "5", "ageing": "", "csvStatus": "Closed", "status2": "", "poc": "", "pending": "", "month": "May", "remark": "", "contact": ""}, {"caseId": "MON-0085", "business": "", "originalBusiness": "", "scf": "2", "ageing": "", "csvStatus": "Closed", "status2": "", "poc": "", "pending": "", "month": "May", "remark": "", "contact": ""}, {"caseId": "MON-0086", "business": "", "originalBusiness": "", "scf": "2", "ageing": "", "csvStatus": "Pending", "status2": "", "poc": "Vinay", "pending": "", "month": "May", "remark": "", "contact": ""}, {"caseId": "MON-0087", "business": "", "originalBusiness": "", "scf": "1", "ageing": "", "csvStatus": "Closed", "status2": "", "poc": "", "pending": "", "month": "May", "remark": "", "contact": ""}, {"caseId": "MON-0088", "business": "", "originalBusiness": "", "scf": "3", "ageing": "", "csvStatus": "Closed", "status2": "", "poc": "", "pending": "", "month": "May", "remark": "", "contact": ""}, {"caseId": "MON-0089", "business": "", "originalBusiness": "", "scf": "3", "ageing": "", "csvStatus": "Closed", "status2": "", "poc": "", "pending": "", "month": "May", "remark": "", "contact": ""}, {"caseId": "MON-0090", "business": "", "originalBusiness": "", "scf": "3", "ageing": "", "csvStatus": "Closed", "status2": "", "poc": "", "pending": "", "month": "May", "remark": "", "contact": ""}, {"caseId": "MON-0091", "business": "", "originalBusiness": "", "scf": "3", "ageing": "", "csvStatus": "Closed", "status2": "", "poc": "", "pending": "", "month": "May", "remark": "", "contact": ""}, {"caseId": "MON-0092", "business": "", "originalBusiness": "", "scf": "2", "ageing": "", "csvStatus": "Closed", "status2": "", "poc": "", "pending": "", "month": "May", "remark": "", "contact": ""}, {"caseId": "MON-0093", "business": "", "originalBusiness": "", "scf": "1.5", "ageing": "", "csvStatus": "Closed", "status2": "", "poc": "", "pending": "", "month": "May", "remark": "", "contact": ""}, {"caseId": "MON-0094", "business": "", "originalBusiness": "", "scf": "1.5", "ageing": "", "csvStatus": "Closed", "status2": "", "poc": "", "pending": "", "month": "May", "remark": "", "contact": ""}, {"caseId": "MON-0095", "business": "", "originalBusiness": "", "scf": "2", "ageing": "", "csvStatus": "Pending", "status2": "", "poc": "Vinay", "pending": "", "month": "May", "remark": "", "contact": ""}, {"caseId": "MON-0096", "business": "", "originalBusiness": "", "scf": "1.5", "ageing": "", "csvStatus": "Closed", "status2": "", "poc": "", "pending": "", "month": "June", "remark": "", "contact": ""}, {"caseId": "MON-0097", "business": "", "originalBusiness": "", "scf": "", "ageing": "", "csvStatus": "Closed", "status2": "", "poc": "", "pending": "", "month": "June", "remark": "", "contact": ""}, {"caseId": "MON-0098", "business": "", "originalBusiness": "", "scf": "", "ageing": "", "csvStatus": "Pending", "status2": "", "poc": "Vinay", "pending": "", "month": "June", "remark": "", "contact": ""}, {"caseId": "MON-0099", "business": "", "originalBusiness": "", "scf": "", "ageing": "", "csvStatus": "Pending", "status2": "", "poc": "Vinay", "pending": "", "month": "June", "remark": "", "contact": ""}, {"caseId": "MON-0100", "business": "", "originalBusiness": "", "scf": "", "ageing": "", "csvStatus": "Closed", "status2": "", "poc": "", "pending": "", "month": "June", "remark": "", "contact": ""}, {"caseId": "MON-0101", "business": "", "originalBusiness": "", "scf": "", "ageing": "", "csvStatus": "Pending", "status2": "", "poc": "Vinay", "pending": "", "month": "June", "remark": "", "contact": ""}, {"caseId": "MON-0102", "business": "", "originalBusiness": "", "scf": "", "ageing": "", "csvStatus": "Cannot be done", "status2": "", "poc": "Vinay", "pending": "", "month": "June", "remark": "", "contact": ""}, {"caseId": "MON-0103", "business": "", "originalBusiness": "", "scf": "50 lakhs", "ageing": "120", "csvStatus": "Approved", "status2": "", "poc": "Vinay", "pending": "", "month": "June", "remark": "", "contact": ""}, {"caseId": "MON-0104", "business": "", "originalBusiness": "", "scf": "50 lakhs", "ageing": "60", "csvStatus": "Approved", "status2": "", "poc": "Vinay", "pending": "", "month": "June", "remark": "", "contact": ""}, {"caseId": "MON-0105", "business": "", "originalBusiness": "", "scf": "50 lakhs", "ageing": "term", "csvStatus": "Approved", "status2": "", "poc": "Vinay", "pending": "", "month": "June", "remark": "", "contact": ""}, {"caseId": "MON-0106", "business": "", "originalBusiness": "", "scf": "", "ageing": "", "csvStatus": "Closed", "status2": "", "poc": "", "pending": "", "month": "June", "remark": "", "contact": ""}, {"caseId": "MON-0107", "business": "", "originalBusiness": "", "scf": "", "ageing": "", "csvStatus": "Pending", "status2": "", "poc": "Vinay", "pending": "", "month": "June", "remark": "", "contact": ""}, {"caseId": "MON-0108", "business": "", "originalBusiness": "", "scf": "", "ageing": "", "csvStatus": "Cannot be done", "status2": "", "poc": "Vinay", "pending": "", "month": "June", "remark": "", "contact": ""}, {"caseId": "MON-0109", "business": "", "originalBusiness": "", "scf": "2.5", "ageing": "", "csvStatus": "Closed", "status2": "", "poc": "", "pending": "", "month": "June", "remark": "", "contact": ""}, {"caseId": "MON-0110", "business": "", "originalBusiness": "", "scf": "", "ageing": "", "csvStatus": "Logined", "status2": "", "poc": "Vinay", "pending": "", "month": "June", "remark": "", "contact": ""}, {"caseId": "MON-0111", "business": "", "originalBusiness": "", "scf": "", "ageing": "", "csvStatus": "Closed", "status2": "", "poc": "Vinay", "pending": "", "month": "June", "remark": "", "contact": ""}, {"caseId": "MON-0112", "business": "", "originalBusiness": "", "scf": "", "ageing": "", "csvStatus": "Hold", "status2": "", "poc": "Vinay", "pending": "", "month": "June", "remark": "", "contact": ""}, {"caseId": "MON-0113", "business": "", "originalBusiness": "", "scf": "2", "ageing": "", "csvStatus": "Logined", "status2": "", "poc": "Vinay", "pending": "", "month": "June", "remark": "", "contact": ""}, {"caseId": "MON-0114", "business": "", "originalBusiness": "", "scf": "3", "ageing": "", "csvStatus": "Closed", "status2": "", "poc": "Vinay", "pending": "", "month": "June", "remark": "", "contact": ""}, {"caseId": "MON-0115", "business": "", "originalBusiness": "", "scf": "3", "ageing": "", "csvStatus": "Closed", "status2": "", "poc": "Vinay", "pending": "", "month": "June", "remark": "", "contact": ""}, {"caseId": "MON-0116", "business": "", "originalBusiness": "", "scf": "2.1", "ageing": "", "csvStatus": "Closed", "status2": "", "poc": "Manju", "pending": "", "month": "June", "remark": "", "contact": ""}, {"caseId": "MON-0117", "business": "", "originalBusiness": "", "scf": "1", "ageing": "", "csvStatus": "Pending", "status2": "", "poc": "Manju", "pending": "", "month": "June", "remark": "", "contact": ""}, {"caseId": "MON-0118", "business": "", "originalBusiness": "", "scf": "", "ageing": "", "csvStatus": "Cannot be done", "status2": "", "poc": "Manju", "pending": "", "month": "June", "remark": "", "contact": ""}, {"caseId": "MON-0119", "business": "", "originalBusiness": "", "scf": "", "ageing": "", "csvStatus": "Cannot be done", "status2": "", "poc": "Manju", "pending": "", "month": "June", "remark": "", "contact": ""}, {"caseId": "MON-0120", "business": "", "originalBusiness": "", "scf": "3", "ageing": "", "csvStatus": "Closed", "status2": "", "poc": "Vinay", "pending": "", "month": "June", "remark": "", "contact": ""}, {"caseId": "MON-0121", "business": "", "originalBusiness": "", "scf": "2", "ageing": "", "csvStatus": "Closed", "status2": "", "poc": "Manju", "pending": "", "month": "June", "remark": "", "contact": ""}, {"caseId": "MON-0122", "business": "", "originalBusiness": "", "scf": "13 CR", "ageing": "", "csvStatus": "Closed", "status2": "", "poc": "Manju", "pending": "", "month": "June", "remark": "", "contact": ""}, {"caseId": "MON-0123", "business": "", "originalBusiness": "", "scf": "2", "ageing": "", "csvStatus": "Logined", "status2": "", "poc": "Manju", "pending": "", "month": "July", "remark": "", "contact": ""}, {"caseId": "MON-0124", "business": "", "originalBusiness": "", "scf": "", "ageing": "1", "csvStatus": "Pending", "status2": "", "poc": "Vinay", "pending": "", "month": "July", "remark": "", "contact": ""}, {"caseId": "MON-0125", "business": "", "originalBusiness": "", "scf": "2", "ageing": "", "csvStatus": "Pending", "status2": "", "poc": "Manju", "pending": "", "month": "July", "remark": "", "contact": ""}, {"caseId": "MON-0126", "business": "", "originalBusiness": "", "scf": "", "ageing": "1", "csvStatus": "Pending", "status2": "", "poc": "Vinay", "pending": "", "month": "July", "remark": "", "contact": ""}, {"caseId": "MON-0127", "business": "", "originalBusiness": "", "scf": "", "ageing": "1", "csvStatus": "Pending", "status2": "", "poc": "Vinay", "pending": "", "month": "July", "remark": "", "contact": ""}, {"caseId": "MON-0128", "business": "", "originalBusiness": "", "scf": "", "ageing": "", "csvStatus": "", "status2": "", "poc": "", "pending": "", "month": "", "remark": "", "contact": ""}, {"caseId": "MON-0129", "business": "", "originalBusiness": "", "scf": "", "ageing": "", "csvStatus": "", "status2": "", "poc": "", "pending": "", "month": "", "remark": "", "contact": ""}, {"caseId": "MON-0130", "business": "", "originalBusiness": "", "scf": "", "ageing": "", "csvStatus": "", "status2": "", "poc": "", "pending": "", "month": "", "remark": "", "contact": ""}, {"caseId": "MON-0131", "business": "", "originalBusiness": "", "scf": "SCF", "ageing": "Ageing", "csvStatus": "Status", "status2": "", "poc": "POC", "pending": "", "month": "Month", "remark": "", "contact": ""}, {"caseId": "MON-0132", "business": "", "originalBusiness": "", "scf": "1", "ageing": "90", "csvStatus": "Closed", "status2": "", "poc": "Vinay", "pending": "", "month": "June", "remark": "", "contact": ""}, {"caseId": "MON-0133", "business": "", "originalBusiness": "", "scf": "2", "ageing": "90", "csvStatus": "Cannot be done", "status2": "", "poc": "Vinay", "pending": "", "month": "June", "remark": "", "contact": ""}, {"caseId": "MON-0134", "business": "", "originalBusiness": "", "scf": "4", "ageing": "85", "csvStatus": "Closed", "status2": "", "poc": "Vinay", "pending": "", "month": "July", "remark": "", "contact": ""}, {"caseId": "MON-0135", "business": "", "originalBusiness": "", "scf": "1.5", "ageing": "85", "csvStatus": "Cannot be done", "status2": "", "poc": "Vinay", "pending": "", "month": "July", "remark": "", "contact": ""}, {"caseId": "MON-0136", "business": "", "originalBusiness": "", "scf": "1.5", "ageing": "85", "csvStatus": "Cannot be done", "status2": "", "poc": "Vinay", "pending": "", "month": "July", "remark": "", "contact": ""}, {"caseId": "MON-0137", "business": "", "originalBusiness": "", "scf": "2.5", "ageing": "84", "csvStatus": "Cannot be done", "status2": "", "poc": "Vinay", "pending": "", "month": "July", "remark": "", "contact": ""}, {"caseId": "MON-0138", "business": "", "originalBusiness": "", "scf": "2.5", "ageing": "82", "csvStatus": "Closed", "status2": "", "poc": "Vinay", "pending": "", "month": "July", "remark": "", "contact": ""}, {"caseId": "MON-0139", "business": "", "originalBusiness": "", "scf": "2", "ageing": "80", "csvStatus": "Closed", "status2": "", "poc": "Vinay", "pending": "", "month": "July", "remark": "", "contact": ""}, {"caseId": "MON-0140", "business": "", "originalBusiness": "", "scf": "", "ageing": "80", "csvStatus": "Hold", "status2": "", "poc": "Vinay", "pending": "", "month": "July", "remark": "", "contact": ""}, {"caseId": "MON-0141", "business": "", "originalBusiness": "", "scf": "", "ageing": "80", "csvStatus": "Cannot be done", "status2": "", "poc": "Vinay", "pending": "", "month": "July", "remark": "", "contact": ""}, {"caseId": "MON-0142", "business": "", "originalBusiness": "", "scf": "", "ageing": "77", "csvStatus": "Cannot be done", "status2": "", "poc": "Vinay", "pending": "", "month": "July", "remark": "", "contact": ""}, {"caseId": "MON-0143", "business": "", "originalBusiness": "", "scf": "", "ageing": "77", "csvStatus": "Cannot be done", "status2": "", "poc": "Vinay", "pending": "", "month": "July", "remark": "", "contact": ""}, {"caseId": "MON-0144", "business": "", "originalBusiness": "", "scf": "", "ageing": "74", "csvStatus": "Hold", "status2": "", "poc": "Vinay", "pending": "", "month": "July", "remark": "", "contact": ""}, {"caseId": "MON-0145", "business": "", "originalBusiness": "", "scf": "", "ageing": "73", "csvStatus": "Cannot be done", "status2": "", "poc": "", "pending": "", "month": "July", "remark": "", "contact": ""}, {"caseId": "MON-0146", "business": "", "originalBusiness": "", "scf": "", "ageing": "73", "csvStatus": "Cannot be done", "status2": "", "poc": "Vinay", "pending": "", "month": "July", "remark": "", "contact": ""}, {"caseId": "MON-0147", "business": "", "originalBusiness": "", "scf": "", "ageing": "69", "csvStatus": "Closed", "status2": "", "poc": "Vinay", "pending": "", "month": "July", "remark": "", "contact": ""}, {"caseId": "MON-0148", "business": "", "originalBusiness": "", "scf": "", "ageing": "69", "csvStatus": "Hold", "status2": "", "poc": "Vinay", "pending": "", "month": "July", "remark": "", "contact": ""}, {"caseId": "MON-0149", "business": "", "originalBusiness": "", "scf": "", "ageing": "68", "csvStatus": "Hold", "status2": "", "poc": "Vinay", "pending": "", "month": "July", "remark": "", "contact": ""}, {"caseId": "MON-0150", "business": "", "originalBusiness": "", "scf": "", "ageing": "68", "csvStatus": "Closed", "status2": "", "poc": "Vinay", "pending": "", "month": "July", "remark": "", "contact": ""}, {"caseId": "MON-0151", "business": "", "originalBusiness": "", "scf": "2", "ageing": "63", "csvStatus": "Closed", "status2": "", "poc": "Vinay", "pending": "", "month": "July", "remark": "", "contact": ""}, {"caseId": "MON-0152", "business": "", "originalBusiness": "", "scf": "", "ageing": "61", "csvStatus": "Closed", "status2": "", "poc": "Vinay", "pending": "", "month": "July", "remark": "", "contact": ""}, {"caseId": "MON-0153", "business": "", "originalBusiness": "", "scf": "", "ageing": "60", "csvStatus": "Closed", "status2": "", "poc": "Vinay", "pending": "", "month": "July", "remark": "", "contact": ""}, {"caseId": "MON-0154", "business": "", "originalBusiness": "", "scf": "", "ageing": "60", "csvStatus": "Closed", "status2": "", "poc": "Vinay", "pending": "", "month": "July", "remark": "", "contact": ""}, {"caseId": "MON-0155", "business": "", "originalBusiness": "", "scf": "", "ageing": "60", "csvStatus": "Closed", "status2": "", "poc": "Vinay", "pending": "", "month": "July", "remark": "", "contact": ""}, {"caseId": "MON-0156", "business": "", "originalBusiness": "", "scf": "", "ageing": "60", "csvStatus": "Closed", "status2": "", "poc": "Vinay", "pending": "", "month": "July", "remark": "", "contact": ""}, {"caseId": "MON-0157", "business": "", "originalBusiness": "", "scf": "", "ageing": "55", "csvStatus": "Closed", "status2": "", "poc": "Vinay", "pending": "", "month": "August", "remark": "", "contact": ""}, {"caseId": "MON-0158", "business": "", "originalBusiness": "", "scf": "", "ageing": "53", "csvStatus": "Cannot be done", "status2": "", "poc": "Vinay", "pending": "", "month": "August", "remark": "", "contact": ""}, {"caseId": "MON-0159", "business": "", "originalBusiness": "", "scf": "", "ageing": "53", "csvStatus": "Closed", "status2": "", "poc": "Vinay", "pending": "", "month": "August", "remark": "", "contact": ""}, {"caseId": "MON-0160", "business": "", "originalBusiness": "", "scf": "", "ageing": "53", "csvStatus": "Cannot be done", "status2": "", "poc": "Vinay", "pending": "", "month": "August", "remark": "", "contact": ""}, {"caseId": "MON-0161", "business": "", "originalBusiness": "", "scf": "", "ageing": "53", "csvStatus": "Cannot be done", "status2": "", "poc": "Vinay", "pending": "", "month": "August", "remark": "", "contact": ""}, {"caseId": "MON-0162", "business": "", "originalBusiness": "", "scf": "", "ageing": "48", "csvStatus": "Hold", "status2": "", "poc": "Vinay", "pending": "", "month": "August", "remark": "", "contact": ""}, {"caseId": "MON-0163", "business": "", "originalBusiness": "", "scf": "", "ageing": "48", "csvStatus": "Cannot be done", "status2": "", "poc": "Vinay", "pending": "", "month": "August", "remark": "", "contact": ""}, {"caseId": "MON-0164", "business": "", "originalBusiness": "", "scf": "", "ageing": "47", "csvStatus": "Cannot be done", "status2": "", "poc": "Vinay", "pending": "", "month": "August", "remark": "", "contact": ""}, {"caseId": "MON-0165", "business": "", "originalBusiness": "", "scf": "", "ageing": "43", "csvStatus": "Closed", "status2": "", "poc": "Vinay", "pending": "", "month": "August", "remark": "", "contact": ""}, {"caseId": "MON-0166", "business": "", "originalBusiness": "", "scf": "", "ageing": "43", "csvStatus": "Cannot be done", "status2": "", "poc": "Vinay", "pending": "", "month": "August", "remark": "", "contact": ""}, {"caseId": "MON-0167", "business": "", "originalBusiness": "", "scf": "", "ageing": "43", "csvStatus": "Hold", "status2": "", "poc": "Vinay", "pending": "", "month": "August", "remark": "", "contact": ""}, {"caseId": "MON-0168", "business": "", "originalBusiness": "", "scf": "", "ageing": "43", "csvStatus": "Closed", "status2": "", "poc": "Vinay", "pending": "", "month": "August", "remark": "", "contact": ""}, {"caseId": "MON-0169", "business": "", "originalBusiness": "", "scf": "3 cr", "ageing": "43", "csvStatus": "Closed", "status2": "", "poc": "Vinay", "pending": "", "month": "August", "remark": "", "contact": ""}, {"caseId": "MON-0170", "business": "", "originalBusiness": "", "scf": "", "ageing": "41", "csvStatus": "Pending", "status2": "", "poc": "Vinay", "pending": "", "month": "August", "remark": "", "contact": ""}, {"caseId": "MON-0171", "business": "", "originalBusiness": "", "scf": "", "ageing": "41", "csvStatus": "Pending", "status2": "", "poc": "Vinay", "pending": "", "month": "August", "remark": "", "contact": ""}, {"caseId": "MON-0172", "business": "", "originalBusiness": "", "scf": "", "ageing": "41", "csvStatus": "Cannot be done", "status2": "", "poc": "Vinay", "pending": "", "month": "August", "remark": "", "contact": ""}, {"caseId": "MON-0173", "business": "", "originalBusiness": "", "scf": "", "ageing": "40", "csvStatus": "Closed", "status2": "", "poc": "Vinay", "pending": "", "month": "August", "remark": "", "contact": ""}, {"caseId": "MON-0174", "business": "", "originalBusiness": "", "scf": "", "ageing": "40", "csvStatus": "Pending", "status2": "", "poc": "Vinay", "pending": "", "month": "August", "remark": "", "contact": ""}, {"caseId": "MON-0175", "business": "", "originalBusiness": "", "scf": "", "ageing": "39", "csvStatus": "Pending", "status2": "", "poc": "Vinay", "pending": "", "month": "August", "remark": "", "contact": ""}, {"caseId": "MON-0176", "business": "", "originalBusiness": "", "scf": "", "ageing": "38", "csvStatus": "Closed", "status2": "", "poc": "Vinay", "pending": "", "month": "August", "remark": "", "contact": ""}, {"caseId": "MON-0177", "business": "", "originalBusiness": "", "scf": "", "ageing": "35", "csvStatus": "Cannot be done", "status2": "", "poc": "Vinay", "pending": "", "month": "August", "remark": "", "contact": ""}, {"caseId": "MON-0178", "business": "", "originalBusiness": "", "scf": "", "ageing": "32", "csvStatus": "Cannot be done", "status2": "", "poc": "Vinay", "pending": "", "month": "August", "remark": "", "contact": ""}, {"caseId": "MON-0179", "business": "", "originalBusiness": "", "scf": "", "ageing": "32", "csvStatus": "Closed", "status2": "", "poc": "Vinay", "pending": "", "month": "August", "remark": "", "contact": ""}, {"caseId": "MON-0180", "business": "", "originalBusiness": "", "scf": "", "ageing": "32", "csvStatus": "Pending", "status2": "", "poc": "Vinay", "pending": "", "month": "August", "remark": "", "contact": ""}, {"caseId": "MON-0181", "business": "", "originalBusiness": "", "scf": "", "ageing": "29", "csvStatus": "Closed", "status2": "", "poc": "Vinay", "pending": "", "month": "August", "remark": "", "contact": ""}, {"caseId": "MON-0182", "business": "", "originalBusiness": "", "scf": "", "ageing": "28", "csvStatus": "Pending", "status2": "", "poc": "Vinay", "pending": "", "month": "September", "remark": "", "contact": ""}, {"caseId": "MON-0183", "business": "", "originalBusiness": "", "scf": "", "ageing": "28", "csvStatus": "Pending", "status2": "", "poc": "Vinay", "pending": "", "month": "September", "remark": "", "contact": ""}, {"caseId": "MON-0184", "business": "", "originalBusiness": "", "scf": "", "ageing": "27", "csvStatus": "Cannot be done", "status2": "", "poc": "Vinay", "pending": "", "month": "September", "remark": "", "contact": ""}, {"caseId": "MON-0185", "business": "", "originalBusiness": "", "scf": "", "ageing": "26", "csvStatus": "Closed", "status2": "", "poc": "Vinay", "pending": "", "month": "September", "remark": "", "contact": ""}, {"caseId": "MON-0186", "business": "", "originalBusiness": "", "scf": "", "ageing": "22", "csvStatus": "Closed", "status2": "", "poc": "Vinay", "pending": "", "month": "September", "remark": "", "contact": ""}, {"caseId": "MON-0187", "business": "", "originalBusiness": "", "scf": "", "ageing": "22", "csvStatus": "Closed", "status2": "", "poc": "Vinay", "pending": "", "month": "September", "remark": "", "contact": ""}, {"caseId": "MON-0188", "business": "", "originalBusiness": "", "scf": "", "ageing": "21", "csvStatus": "Closed", "status2": "", "poc": "Vinay", "pending": "", "month": "September", "remark": "", "contact": ""}, {"caseId": "MON-0189", "business": "", "originalBusiness": "", "scf": "", "ageing": "20", "csvStatus": "Closed", "status2": "", "poc": "Vinay", "pending": "", "month": "September", "remark": "", "contact": ""}, {"caseId": "MON-0190", "business": "", "originalBusiness": "", "scf": "", "ageing": "14", "csvStatus": "Pending", "status2": "", "poc": "Vinay", "pending": "", "month": "September", "remark": "", "contact": ""}, {"caseId": "MON-0191", "business": "", "originalBusiness": "", "scf": "", "ageing": "14", "csvStatus": "Cannot be done", "status2": "", "poc": "Vinay", "pending": "", "month": "September", "remark": "", "contact": ""}, {"caseId": "MON-0192", "business": "", "originalBusiness": "", "scf": "", "ageing": "14", "csvStatus": "Cannot be done", "status2": "", "poc": "Vinay", "pending": "", "month": "September", "remark": "", "contact": ""}, {"caseId": "MON-0193", "business": "", "originalBusiness": "", "scf": "", "ageing": "13", "csvStatus": "Cannot be done", "status2": "", "poc": "Vinay", "pending": "", "month": "September", "remark": "", "contact": ""}, {"caseId": "MON-0194", "business": "", "originalBusiness": "", "scf": "", "ageing": "12", "csvStatus": "Logined", "status2": "", "poc": "Vinay", "pending": "", "month": "September", "remark": "", "contact": ""}, {"caseId": "MON-0195", "business": "", "originalBusiness": "", "scf": "", "ageing": "11", "csvStatus": "Closed", "status2": "", "poc": "Vinay", "pending": "", "month": "September", "remark": "", "contact": ""}, {"caseId": "MON-0196", "business": "", "originalBusiness": "", "scf": "", "ageing": "10", "csvStatus": "Closed", "status2": "", "poc": "Vinay", "pending": "", "month": "September", "remark": "", "contact": ""}, {"caseId": "MON-0197", "business": "", "originalBusiness": "", "scf": "", "ageing": "10", "csvStatus": "Pending", "status2": "", "poc": "Vinay", "pending": "", "month": "September", "remark": "", "contact": ""}, {"caseId": "MON-0198", "business": "", "originalBusiness": "", "scf": "", "ageing": "8", "csvStatus": "Pending", "status2": "", "poc": "Vinay", "pending": "", "month": "September", "remark": "", "contact": ""}, {"caseId": "MON-0199", "business": "", "originalBusiness": "", "scf": "", "ageing": "8", "csvStatus": "Logined", "status2": "", "poc": "Vinay", "pending": "", "month": "September", "remark": "", "contact": ""}, {"caseId": "MON-0200", "business": "", "originalBusiness": "", "scf": "", "ageing": "8", "csvStatus": "Logined", "status2": "", "poc": "Vinay", "pending": "", "month": "September", "remark": "", "contact": ""}, {"caseId": "MON-0201", "business": "", "originalBusiness": "", "scf": "", "ageing": "7", "csvStatus": "Logined", "status2": "", "poc": "Vinay", "pending": "", "month": "September", "remark": "", "contact": ""}, {"caseId": "MON-0202", "business": "", "originalBusiness": "", "scf": "", "ageing": "6", "csvStatus": "Cannot be done", "status2": "", "poc": "Manju", "pending": "", "month": "September", "remark": "", "contact": ""}, {"caseId": "MON-0203", "business": "", "originalBusiness": "", "scf": "", "ageing": "6", "csvStatus": "Closed", "status2": "", "poc": "Vinay", "pending": "", "month": "September", "remark": "", "contact": ""}, {"caseId": "MON-0204", "business": "", "originalBusiness": "", "scf": "", "ageing": "6", "csvStatus": "Logined", "status2": "", "poc": "Vinay", "pending": "", "month": "September", "remark": "", "contact": ""}, {"caseId": "MON-0205", "business": "", "originalBusiness": "", "scf": "", "ageing": "5", "csvStatus": "Approved", "status2": "", "poc": "Vinay", "pending": "", "month": "September", "remark": "", "contact": ""}, {"caseId": "MON-0206", "business": "", "originalBusiness": "", "scf": "", "ageing": "4", "csvStatus": "Pending", "status2": "", "poc": "Vinay", "pending": "", "month": "September", "remark": "", "contact": ""}, {"caseId": "MON-0207", "business": "", "originalBusiness": "", "scf": "", "ageing": "4", "csvStatus": "Logined", "status2": "", "poc": "Vinay", "pending": "", "month": "September", "remark": "", "contact": ""}, {"caseId": "MON-0208", "business": "", "originalBusiness": "", "scf": "", "ageing": "4", "csvStatus": "Pending", "status2": "", "poc": "Vinay", "pending": "", "month": "September", "remark": "", "contact": ""}, {"caseId": "MON-0209", "business": "", "originalBusiness": "", "scf": "", "ageing": "3", "csvStatus": "Pending", "status2": "", "poc": "Vinay", "pending": "", "month": "September", "remark": "", "contact": ""}, {"caseId": "MON-0210", "business": "", "originalBusiness": "", "scf": "", "ageing": "4", "csvStatus": "Cannot be done", "status2": "", "poc": "Manju", "pending": "", "month": "September", "remark": "", "contact": ""}, {"caseId": "MON-0211", "business": "", "originalBusiness": "", "scf": "", "ageing": "4", "csvStatus": "Cannot be done", "status2": "", "poc": "Manju", "pending": "", "month": "September", "remark": "", "contact": ""}, {"caseId": "MON-0212", "business": "", "originalBusiness": "", "scf": "", "ageing": "3", "csvStatus": "Pending", "status2": "", "poc": "Vinay", "pending": "", "month": "September", "remark": "", "contact": ""}, {"caseId": "MON-0213", "business": "", "originalBusiness": "", "scf": "", "ageing": "1", "csvStatus": "Hold", "status2": "", "poc": "Manju", "pending": "", "month": "September", "remark": "", "contact": ""}, {"caseId": "MON-0214", "business": "", "originalBusiness": "", "scf": "", "ageing": "1", "csvStatus": "Pending", "status2": "", "poc": "Vinay", "pending": "", "month": "September", "remark": "", "contact": ""}, {"caseId": "MON-0215", "business": "", "originalBusiness": "", "scf": "", "ageing": "1", "csvStatus": "Pending", "status2": "", "poc": "Vinay", "pending": "", "month": "September", "remark": "", "contact": ""}, {"caseId": "MON-0216", "business": "", "originalBusiness": "", "scf": "", "ageing": "0", "csvStatus": "Pending", "status2": "", "poc": "Vinay", "pending": "", "month": "September", "remark": "", "contact": ""}, {"caseId": "MON-0217", "business": "", "originalBusiness": "", "scf": "", "ageing": "0", "csvStatus": "Pending", "status2": "", "poc": "Vinay", "pending": "", "month": "September", "remark": "", "contact": ""}, {"caseId": "MON-0218", "business": "", "originalBusiness": "", "scf": "", "ageing": "0", "csvStatus": "Pending", "status2": "", "poc": "Vinay", "pending": "", "month": "September", "remark": "", "contact": ""}, {"caseId": "MON-0219", "business": "", "originalBusiness": "", "scf": "", "ageing": "4", "csvStatus": "Approved", "status2": "", "poc": "Manju", "pending": "", "month": "September", "remark": "", "contact": ""}, {"caseId": "MON-0220", "business": "", "originalBusiness": "", "scf": "", "ageing": "1", "csvStatus": "Logined", "status2": "", "poc": "Manju", "pending": "", "month": "September", "remark": "", "contact": ""}, {"caseId": "MON-0221", "business": "", "originalBusiness": "", "scf": "", "ageing": "2", "csvStatus": "Cannot be done", "status2": "", "poc": "Manju", "pending": "", "month": "September", "remark": "", "contact": ""}, {"caseId": "MON-0222", "business": "", "originalBusiness": "", "scf": "", "ageing": "2", "csvStatus": "Pending", "status2": "", "poc": "Manju", "pending": "", "month": "September", "remark": "", "contact": ""}];
+const STAGES = ["Documents Pending","Under Credit Review","Sanction Received","Disbursement Pending","Disbursed"];
+
+function inferStage(r){
+  const s=(r.status2+" "+r.csvStatus+" "+r.pending+" "+r.remark).toLowerCase();
+  if(/disburs/.test(s) && /disbursed|done|completed/.test(s)) return "Disbursed";
+  if(/sanction/.test(s)) return "Sanction Received";
+  if(/disbursement|agreement|nach|vkyc|ckyc/.test(s)) return "Disbursement Pending";
+  if(/credit|approval|query|pd|cam/.test(s)) return "Under Credit Review";
+  return "Documents Pending";
+}
+function inferStatus(r){
+  const s=(r.status2+" "+r.csvStatus).toLowerCase();
+  if(/reject/.test(s)) return "Rejected";
+  if(/hold/.test(s)) return "On Hold";
+  return "Active";
+}
+function parseAge(v){
+  const n=parseFloat(String(v).replace(/[^0-9.]/g,""));
+  return isNaN(n)?null:n;
+}
+function today(){
+  return new Date().toLocaleDateString("en-IN",{day:"2-digit",month:"short",year:"numeric"});
+}
+function loadState(){
+  try{
+    const saved=localStorage.getItem("monedo_dashboard_state");
+    if(saved) return JSON.parse(saved);
+  }catch(e){}
+  return {
+    cases: INITIAL_DATA.map(x=>({...x,stage:inferStage(x),status:inferStatus(x),lastUpdated:today(),history:[{date:today(),type:"Initial load",stage:inferStage(x),status:inferStatus(x),pending:x.pending||"—"}]})),
+    updated: today()
+  };
+}
+let state=loadState();
+
+function save(){localStorage.setItem("monedo_dashboard_state",JSON.stringify(state));}
+function norm(x){return String(x??"").trim().toLowerCase();}
+function mergeCase(oldC,newC){
+  const changes=[];
+  const fields=["business","scf","ageing","poc","pending","remark","contact","month"];
+  fields.forEach(f=>{if(norm(oldC[f])!==norm(newC[f])) changes.push(`${f}: "${oldC[f]||"—"}" → "${newC[f]||"—"}"`);});
+  const newStage=inferStage(newC), newStatus=inferStatus(newC);
+  if(oldC.stage!==newStage) changes.push(`stage: "${oldC.stage}" → "${newStage}"`);
+  if(oldC.status!==newStatus) changes.push(`status: "${oldC.status}" → "${newStatus}"`);
+  const merged={...oldC,...newC,stage:newStage,status:newStatus,lastUpdated:today()};
+  if(changes.length) merged.history=[...(oldC.history||[]),{date:today(),type:"Daily MIS update",changes}];
+  return merged;
+}
+function updateFromRows(rows){
+  const byId=new Map(state.cases.map(c=>[norm(c.caseId),c]));
+  let added=0, changed=0;
+  rows.forEach(r=>{
+    const id=norm(r.caseId);
+    if(!id) return;
+    const existing=byId.get(id);
+    if(existing){
+      const before=JSON.stringify({...existing});
+      const merged=mergeCase(existing,r);
+      if(JSON.stringify({...merged,history:undefined})!==JSON.stringify({...existing,history:undefined})) changed++;
+      byId.set(id,merged);
+    }else{
+      const stage=inferStage(r), status=inferStatus(r);
+      byId.set(id,{...r,stage,status,lastUpdated:today(),history:[{date:today(),type:"New case added",stage,status,pending:r.pending||"—"}]});
+      added++;
+    }
+  });
+  state.cases=Array.from(byId.values());
+  state.updated=today();
+  save(); render();
+  alert(`Daily MIS updated\\n\\nNew cases: ${added}\\nCases changed: ${changed}\\nTotal cases: ${state.cases.length}`);
+}
+function parseCSV(text){
+  const rows=[]; let row=[], cell="", quoted=false;
+  for(let i=0;i<text.length;i++){
+    const ch=text[i], nx=text[i+1];
+    if(ch==='"'){ if(quoted && nx==='"'){cell+='"';i++;} else quoted=!quoted; }
+    else if(ch===',' && !quoted){row.push(cell);cell="";}
+    else if((ch==='\\n'||ch==='\\r') && !quoted){
+      if(ch==='\\r'&&nx==='\\n')i++;
+      row.push(cell);cell="";
+      if(row.some(x=>String(x).trim()!=="")) rows.push(row);
+      row=[];
+    } else cell+=ch;
+  }
+  row.push(cell); if(row.some(x=>String(x).trim()!=="")) rows.push(row);
+  if(!rows.length) return [];
+  let h=rows.findIndex(r=>r.some(x=>/LOS|Customer|SCF|Ageing/i.test(x)));
+  if(h<0) h=0;
+  const headers=rows[h].map(x=>String(x).trim());
+  const ix=(name)=>headers.findIndex(x=>norm(x)===norm(name));
+  return rows.slice(h+1).map(r=>{
+    const get=name=>{const i=ix(name);return i>=0?String(r[i]||"").trim():"";};
+    const los=get("LOS");
+    return {
+      caseId:los || "",
+      business:displayName(get("Customer")),
+      originalBusiness:get("Customer"),
+      scf:get("SCF"),
+      ageing:get("Ageing"),
+      csvStatus:get("Status"),
+      status2:get("Status 2"),
+      poc:get("POC"),
+      pending:get("Pending / Remark"),
+      month:get("Month"),
+      remark:get("Additional Remark"),
+      contact:get("Contact")
+    };
+  }).filter(r=>r.caseId || r.business);
+}
+function displayName(s){
+  s=String(s||"").trim().replace(/\\s+/g," ");
+  if(!s) return "";
+  let o=s.toLowerCase().replace(/\\b\\w/g,m=>m.toUpperCase());
+  [["Pvt","Pvt"],["Ltd","Ltd"],["Llp","LLP"],["Llc","LLC"],["M/s","M/s"],["Hdfc","HDFC"],["Icici","ICICI"],["Sbi","SBI"],["Axis","AXIS"],["Idfc","IDFC"],["Hp","HP"],["Fp","FP"],["Jk","JK"]].forEach(([a,b])=>o=o.replace(new RegExp("\\\\b"+a+"\\\\b","gi"),b));
+  return o;
+}
+document.getElementById("csvUpload").addEventListener("change",e=>{
+  const file=e.target.files[0]; if(!file)return;
+  const reader=new FileReader();
+  reader.onload=()=>updateFromRows(parseCSV(reader.result));
+  reader.readAsText(file);
+  e.target.value="";
+});
+
+function stageClass(stage){
+  return stage==="Disbursed"?"stage-purple":stage==="Sanction Received"?"stage-blue":"";
+}
+function render(){
+  const cases=state.cases;
+  const counts=Object.fromEntries(STAGES.map(s=>[s,cases.filter(c=>c.stage===s).length]));
+  const active=cases.filter(c=>c.status==="Active").length;
+  const hold=cases.filter(c=>c.status==="On Hold").length;
+  const rejected=cases.filter(c=>c.status==="Rejected").length;
+  const old15=cases.filter(c=>(parseAge(c.ageing)||0)>=15).length;
+  document.getElementById("cards").innerHTML=[
+    ["Total Cases",cases.length],["Active",active],["On Hold",hold],["Rejected",rejected],["15+ Days Pending",old15],["New/Updated Today",cases.filter(c=>c.lastUpdated===today()).length]
+  ].map(x=>`<div class="card"><div class="n">${x[1]}</div><div class="l">${x[0]}</div></div>`).join("");
+  document.getElementById("pipeline").innerHTML=STAGES.map(s=>`<div class="stage" onclick="setStage('${s}')"><div class="num">${counts[s]}</div><div class="txt">${s}</div></div>`).join("");
+  document.getElementById("lastUpdated").textContent="Data last updated: "+state.updated;
+  document.getElementById("stageFilter").innerHTML='<option value="">All stages</option>'+STAGES.map(s=>`<option>${s}</option>`).join("");
+  renderTable();
+}
+function renderTable(){
+  const q=norm(document.getElementById("search").value), sf=document.getElementById("stageFilter").value;
+  const st=document.getElementById("statusFilter").value, af=document.getElementById("ageFilter").value;
+  let arr=state.cases.filter(c=>{
+    const hay=[c.caseId,c.business,c.originalBusiness,c.poc,c.contact,c.pending,c.remark].map(norm).join(" ");
+    const age=parseAge(c.ageing)||0;
+    return (!q||hay.includes(q))&&(!sf||c.stage===sf)&&(!st||c.status===st)&&(!af||(af==="15"?age>=15:age>=30));
+  });
+  arr.sort((a,b)=>(parseAge(b.ageing)||0)-(parseAge(a.ageing)||0));
+  document.getElementById("tbody").innerHTML=arr.map(c=>{
+    const age=parseAge(c.ageing); const ageCls=age>=30?"age-old":age>=15?"age-mid":"";
+    const statusCls=c.status==="Active"?"active":c.status==="On Hold"?"hold":"rejected";
+    return `<tr onclick="openCase('${esc(c.caseId)}')" style="cursor:pointer">
+      <td><div class="business">${esc(c.business||"—")}</div><div class="caseid">${esc(c.caseId)}</div></td>
+      <td><span class="badge ${stageClass(c.stage)}">${esc(c.stage)}</span></td>
+      <td><span class="badge ${statusCls}">${esc(c.status)}</span></td>
+      <td><div class="pending">${esc(c.pending||"No pending action recorded")}</div>${c.remark?`<div class="small">${esc(c.remark)}</div>`:""}</td>
+      <td>${esc(c.poc||"—")}</td>
+      <td>${esc(c.scf||"—")}</td>
+      <td class="${ageCls}">${esc(c.ageing||"—")}</td>
+      <td>${esc(c.lastUpdated||"—")}</td>
+    </tr>`;
+  }).join("");
+  document.getElementById("empty").style.display=arr.length?"none":"block";
+}
+function esc(s){return String(s??"").replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"}[m]));}
+function setStage(s){document.getElementById("stageFilter").value=s;renderTable();window.scrollTo({top:document.querySelector(".panel:last-of-type").offsetTop-10,behavior:"smooth"});}
+function clearFilters(){document.getElementById("search").value="";document.getElementById("stageFilter").value="";document.getElementById("statusFilter").value="";document.getElementById("ageFilter").value="";renderTable();}
+["search","stageFilter","statusFilter","ageFilter"].forEach(id=>document.getElementById(id).addEventListener("input",renderTable));
+
+function openCase(id){
+  const c=state.cases.find(x=>x.caseId===id); if(!c)return;
+  document.getElementById("modalTitle").textContent=`${c.business||"Case"} • ${c.caseId}`;
+  const hist=(c.history||[]).slice().reverse().map(h=>`<div class="history-row"><b>${esc(h.date)}</b> — ${esc(h.type)}${h.changes?`<div class="small">${h.changes.map(esc).join(" • ")}</div>`:`<div class="small">${esc(h.stage)} • ${esc(h.status)} • Pending: ${esc(h.pending)}</div>`}</div>`).join("");
+  document.getElementById("modalBody").innerHTML=`<div class="grid">
+    <div class="kv"><b>Business</b>${esc(c.business||"—")}</div><div class="kv"><b>Case ID</b>${esc(c.caseId)}</div>
+    <div class="kv"><b>Stage</b>${esc(c.stage)}</div><div class="kv"><b>Current Status</b>${esc(c.status)}</div>
+    <div class="kv"><b>Current Pending / Action</b>${esc(c.pending||"—")}</div><div class="kv"><b>Person Responsible</b>${esc(c.poc||"—")}</div>
+    <div class="kv"><b>SCF Amount</b>${esc(c.scf||"—")}</div><div class="kv"><b>Case Ageing</b>${esc(c.ageing||"—")}</div>
+    <div class="kv"><b>Contact</b>${esc(c.contact||"—")}</div><div class="kv"><b>Month</b>${esc(c.month||"—")}</div>
+    <div class="kv"><b>Original Business Name</b>${esc(c.originalBusiness||"—")}</div><div class="kv"><b>Additional Remark</b>${esc(c.remark||"—")}</div>
+  </div><div class="history"><b>Change History</b>${hist||'<div class="small">No history recorded</div>'}</div>`;
+  document.getElementById("modal").classList.add("show");
+}
+function closeModal(){document.getElementById("modal").classList.remove("show");}
+document.getElementById("modal").addEventListener("click",e=>{if(e.target.id==="modal")closeModal();});
+
+function csvEscape(v){const s=String(v??"");return `"${s.replace(/"/g,'""')}"`;}
+function exportSnapshot(){
+  const headers=["Case ID","Business","Stage","Current Status","Current Pending / Action","POC","SCF Amount","Ageing","Contact","Last Updated"];
+  const rows=state.cases.map(c=>[c.caseId,c.business,c.stage,c.status,c.pending,c.poc,c.scf,c.ageing,c.contact,c.lastUpdated]);
+  const csv=[headers,...rows].map(r=>r.map(csvEscape).join(",")).join("\\r\\n");
+  const blob=new Blob([csv],{type:"text/csv;charset=utf-8"});
+  const a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download="monedo-current-snapshot.csv";a.click();
+}
+function resetDemo(){
+  if(!confirm("Reset the dashboard to the original loaded MIS data? This will remove browser-saved daily changes."))return;
+  localStorage.removeItem("monedo_dashboard_state");state=loadState();render();
+}
+render();
+</script>
+</body>
+</html>
