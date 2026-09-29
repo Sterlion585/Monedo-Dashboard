@@ -401,32 +401,51 @@ function openCase(id){
 function closeModal(){document.getElementById("modal").classList.remove("show");}
 document.getElementById("modal").addEventListener("click",e=>{if(e.target.id==="modal")closeModal();});
 
-function csvEscape(v){const s=String(v??"");return `"${s.replace(/"/g,'""')}"`;}
+function csvEscape(v){
+  const s=String(v??"");
+  return `"${s.replace(/"/g,'""')}"`;
+}
+
 function exportSnapshot(){
   const headers=[
     "Case ID","Business Name","Original Business Name","Stage","Current Status",
     "Current Pending / Action","Person Responsible","SCF Amount","Case Ageing",
     "Contact","Month","Additional Remark","Last Updated"
   ];
+
   const rows=state.cases.map(c=>[
-    c.caseId,c.business,c.originalBusiness||c.business,c.stage,c.status,
-    c.pending,c.poc,c.scf,c.ageing,c.contact,c.month,c.remark,c.lastUpdated
+    c.caseId || "",
+    c.business || "",
+    c.originalBusiness || c.business || "",
+    c.stage || "",
+    c.status || "",
+    c.pending || "",
+    c.poc || "",
+    c.scf || "",
+    c.ageing || "",
+    c.contact || "",
+    c.month || "",
+    c.remark || "",
+    c.lastUpdated || ""
   ]);
-  // Use real CRLF characters. Do not use the literal text \\r\\n.
-  const csv=[headers,...rows].map(r=>r.map(csvEscape).join(",")).join("\r\n")+"\r\n";
-  const blob=new Blob(["\\ufeff",csv],{type:"text/csv;charset=utf-8"});
-  const a=document.createElement("a");
+
+  // Use real CRLF line breaks, not the literal characters "\\r\\n".
+  const csvText=[headers,...rows]
+    .map(row=>row.map(csvEscape).join(","))
+    .join("\r\n") + "\r\n";
+
+  const blob=new Blob(["\uFEFF",csvText],{
+    type:"text/csv;charset=utf-8"
+  });
+
   const url=URL.createObjectURL(blob);
+  const a=document.createElement("a");
   a.href=url;
   a.download="monedo-current-snapshot.csv";
   document.body.appendChild(a);
   a.click();
   a.remove();
   setTimeout(()=>URL.revokeObjectURL(url),1000);
-}
-function resetDemo(){
-  if(!confirm("Reset the dashboard to the original loaded MIS data? This will remove browser-saved daily changes."))return;
-  localStorage.removeItem("monedo_dashboard_state_v3");state=loadState();render();
 }
 render();
 </script>
